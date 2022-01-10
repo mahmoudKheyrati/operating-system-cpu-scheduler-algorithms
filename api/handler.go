@@ -3,6 +3,8 @@ package api
 import (
 	"github.com/gofiber/fiber/v2"
 	"os-project/config"
+	"os-project/internal/requests"
+	"os-project/internal/schedulers"
 )
 
 type SchedulerHandler interface {
@@ -21,7 +23,21 @@ func NewSchedulerHandlerImpl(config *config.SchedulerConfig) *SchedulerHandlerIm
 }
 
 func (s *SchedulerHandlerImpl) FirstComeFirstServe(ctx *fiber.Ctx) error {
-	panic("implement me")
+	var request *requests.ScheduleRequests
+	if err := ctx.BodyParser(request); err != nil {
+		ctx.JSON(fiber.Map{
+			"error": "invalid request format",
+		})
+		return nil
+	}
+	response, err := schedulers.ScheduleFirstComeFirstServe(request)
+	if err != nil {
+		ctx.JSON(fiber.Map{"error": "can not proccess request"})
+		return nil
+	}
+
+	ctx.JSON(response)
+	return nil
 }
 
 func (s *SchedulerHandlerImpl) RoundRobin(ctx *fiber.Ctx) error {
