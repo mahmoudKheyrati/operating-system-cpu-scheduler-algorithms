@@ -15,10 +15,6 @@ type SchedulerConfig struct {
 var once sync.Once
 var config *SchedulerConfig
 
-var defaultConfig string = `
-  
-`
-
 func GetSchedulerConfig() *SchedulerConfig {
 	once.Do(func() {
 		viper.SetConfigName("config")
