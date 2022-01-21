@@ -1,7 +1,7 @@
 package responses
 
 type ProcessResponse struct {
-	ProcessName    string  `json:"process_name"`
+	ProcessId      int     `json:"process_id"`
 	ResponseTime   float64 `json:"response_time"`
 	TurnAroundTime float64 `json:"turn_around_time"`
 	WaitingTime    float64 `json:"waiting_time"`
