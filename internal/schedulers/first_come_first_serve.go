@@ -8,11 +8,16 @@ import (
 	"time"
 )
 
-type proccess struct {
-	responses.ProcessResponse
+type cpuCore struct {
 }
 
-type cpuCore struct {
+type scheduleTime struct {
+	submission time.Time
+	execution  time.Time
+}
+type Proccess struct {
+	job           *requests.Job
+	ScheduleTimes []scheduleTime
 }
 
 type cpuMetric struct {
@@ -21,32 +26,43 @@ type cpuMetric struct {
 	IdleTime        time.Duration
 }
 
-func cpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan requests.Job, ioWorkQueue chan requests.Job, metric *cpuMetric) {
+func cpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan Proccess, completedProcesses chan Proccess, metric *cpuMetric) {
 	defer wg.Done()
 	var startTime = time.Now()
 	var utilizationTime = 0
-	for job := range cpuWorkQueue {
-		if job.CpuTime1 != -1 {
+	for proccess := range cpuWorkQueue {
+		if proccess.job.CpuTime1 != -1 {
 			// execute cpu time 1
-			time.Sleep(time.Duration(job.CpuTime1) * time.Second) // simulate execution
-			job.CpuTime1 = -1
-			utilizationTime += job.CpuTime1
-			utilizationTime += job.CpuTime1
+			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].execution = time.Now() // set execution time
+			time.Sleep(time.Duration(proccess.job.CpuTime1) * time.Second)               // simulate execution
+			proccess.job.CpuTime1 = -1
+			utilizationTime += proccess.job.CpuTime1
+			utilizationTime += proccess.job.CpuTime1
 			// context switch
 
-		} else if job.CpuTime1 == -1 && job.IoTime != -1 {
+		} else if proccess.job.CpuTime1 == -1 && proccess.job.IoTime != -1 {
+			// todo: if time-quantum not finished we can send io-request
+
 			// run io in the io queue
 			go func() { // runs on another coroutine to ensure not waiting for request io
-				ioWorkQueue <- job
+				ioWorkQueue <- proccess
 			}()
 			// context switch
-		} else if job.CpuTime2 != -1 {
+		} else if proccess.job.CpuTime2 != -1 {
 			// execute cpu time 2
 
-			time.Sleep(time.Duration(job.CpuTime2) * time.Second) // simulate execution
-			job.CpuTime2 = -1
-			utilizationTime += job.CpuTime2
+			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].execution = time.Now() // set execution time
+			time.Sleep(time.Duration(proccess.job.CpuTime2) * time.Second)               // simulate execution
+			proccess.job.CpuTime2 = -1
+			utilizationTime += proccess.job.CpuTime2
 			// context switch
+
+			// use goroutine to ensure sending to channel is non-blocking
+			go func() {
+				// last execution: when proccess complete its execution we send it to done channel
+				completedProcesses <- proccess
+			}()
+
 		}
 	}
 	var totalTime = time.Now().Sub(startTime)
@@ -58,15 +74,21 @@ func cpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan requests.Job, ioWorkQueue 
 		UtilizationTime: time.Duration(utilizationTime) * time.Second,
 		IdleTime:        cpuIdleTime,
 	}
+
 }
 
-func ioExecute(wg *sync.WaitGroup, ioWorkQueue chan requests.Job, cpuWorkQueue chan requests.Job) {
+func ioExecute(wg *sync.WaitGroup, ioWorkQueue chan Proccess, cpuWorkQueue chan Proccess) {
 	defer wg.Done()
-	for job := range ioWorkQueue {
-		time.Sleep(time.Duration(job.IoTime) * time.Second)
-		job.IoTime = -1
+	for proccess := range ioWorkQueue {
+		time.Sleep(time.Duration(proccess.job.IoTime) * time.Second)
+		proccess.job.IoTime = -1
+		// submit proccess to cpu to execute
+		var scheduleTime = scheduleTime{
+			submission: time.Now(),
+		}
+		proccess.ScheduleTimes = append(proccess.ScheduleTimes, scheduleTime)
 		// add this job to ready queue
-		cpuWorkQueue <- job
+		cpuWorkQueue <- proccess
 	}
 }
 
@@ -75,8 +97,9 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.
 	var ioDeviceCount = 1
 
 	// run cpu cores and io devices
-	var cpuWorkQueue = make(chan requests.Job)
-	var ioWorkQueue = make(chan requests.Job)
+	var cpuWorkQueue = make(chan Proccess)
+	var ioWorkQueue = make(chan Proccess)
+	var completedProcesses = make(chan Proccess)
 
 	var cpuMetrics = make([]*cpuMetric, 0, 0)
 
@@ -86,7 +109,7 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.
 	// by this technique we could have multi-core and multi-io device at once
 	for i := 0; i < cpuCoresCount; i++ {
 		cpuMetrics = append(cpuMetrics, &cpuMetric{})
-		go cpuExecute(&wg, cpuWorkQueue, ioWorkQueue, cpuMetrics[i])
+		go cpuExecute(&wg, cpuWorkQueue, ioWorkQueue, completedProcesses, cpuMetrics[i])
 	}
 
 	for i := 0; i < ioDeviceCount; i++ {
@@ -97,7 +120,7 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.
 	go func(waitGroup *sync.WaitGroup) {
 		defer waitGroup.Done()
 
-		// sort based on arrival time
+		// sort jobs by arrival time
 		jobs := request.Jobs[:]
 		sort.SliceStable(jobs, func(i, j int) bool {
 			return jobs[i].ArrivalTime < jobs[j].ArrivalTime
@@ -105,7 +128,14 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.
 
 		// schedule jobs
 		for _, job := range jobs {
-			cpuWorkQueue <- job
+			proccess := Proccess{
+				job:           &job,
+				ScheduleTimes: make([]scheduleTime, 0, 0),
+			}
+			proccess.ScheduleTimes = append(proccess.ScheduleTimes, scheduleTime{
+				submission: time.Now(),
+			})
+			cpuWorkQueue <- proccess
 		}
 		close(cpuWorkQueue)
 		close(ioWorkQueue)
