@@ -64,10 +64,6 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.S
 			})
 			cpuWorkQueue <- proccess
 		}
-		//close(ioWorkQueue)
-		time.Sleep(10 * time.Second)
-		close(cpuWorkQueue)
-		close(ioWorkQueue)
 
 	}(&wg)
 
@@ -92,6 +88,11 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.S
 				TurnAroundTime: turnAroundTime.Seconds(),
 				WaitingTime:    waitingTime,
 			})
+
+			if len(proccessDetails) == len(request.Jobs) {
+				close(cpuWorkQueue)
+				close(ioWorkQueue)
+			}
 		}
 	}(&wg)
 
