@@ -60,7 +60,7 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.S
 				ScheduleTimes: make([]core.ScheduleTime, 0, 0),
 			}
 			proccess.ScheduleTimes = append(proccess.ScheduleTimes, core.ScheduleTime{
-				Submission: time.Now(),
+				Submission: time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second),
 			})
 			cpuWorkQueue <- proccess
 		}

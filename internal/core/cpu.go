@@ -27,9 +27,23 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 	defer wg.Done()
 	defer close(completedProcesses)
 
-	var startTime = time.Now()
 	var utilizationTime = 0
+	var startTime = time.Now()
 	for proccess := range cpuWorkQueue {
+		// arrival time in the future
+		nextArrivalDuration := startTime.Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())
+		log.Println("next arrival duration: ", nextArrivalDuration)
+		if nextArrivalDuration > 0 {
+			go func(p Proccess) {
+				select {
+				case <-time.After(startTime.Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())):
+					// re-schedule
+					cpuWorkQueue <- proccess
+				}
+			}(proccess)
+			continue
+		}
+
 		if proccess.Job.CpuTime1 != -1 {
 			// execute cpu time 1
 			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Execution = time.Now() // set execution time
@@ -72,7 +86,7 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 				completedProcesses <- proccess
 			}()
 
-			log.Println("cpu-time1 executes successfully. ")
+			log.Println("cpu-time2 executes successfully. ")
 
 		}
 	}
@@ -80,7 +94,7 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 	var cpuIdleTime = totalTime - time.Duration(utilizationTime)*time.Second
 
 	// assign metrics
-	metric = &CpuMetric{
+	*metric = CpuMetric{
 		TotalTime:       totalTime,
 		UtilizationTime: time.Duration(utilizationTime) * time.Second,
 		IdleTime:        cpuIdleTime,
