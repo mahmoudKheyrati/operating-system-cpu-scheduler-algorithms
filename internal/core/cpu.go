@@ -10,6 +10,7 @@ import (
 type ScheduleTime struct {
 	Submission time.Time
 	Execution  time.Time
+	Complete   time.Time
 }
 type Proccess struct {
 	Job           *requests.Job
@@ -52,10 +53,11 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 			utilizationTime += proccess.Job.CpuTime1
 			proccess.Job.CpuTime1 = -1
 			log.Println("cpu-time1 executes successfully. ")
-			// context switch
 
-			//go func() { // runs on another coroutine to ensure not waiting for request io
 			log.Println("send io request. process: ", proccess)
+			//go func() { // runs on another coroutine to ensure not waiting for request io
+			// context switch
+			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Complete = time.Now()
 			ioWorkQueue <- proccess
 			//}()
 
@@ -72,6 +74,7 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 			// execute cpu time 2
 
 			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Execution = time.Now() // set execution time
+
 			log.Println("cpu-time2 takes ", proccess.Job.CpuTime2, " seconds.")
 
 			time.Sleep(time.Duration(proccess.Job.CpuTime2) * time.Second) // simulate execution
@@ -85,6 +88,7 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 				log.Println("send proccess to completed proccess channel. proccess: ", proccess)
 				completedProcesses <- proccess
 			}()
+			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Complete = time.Now()
 
 			log.Println("cpu-time2 executes successfully. ")
 
@@ -110,7 +114,7 @@ func IoExecute(wg *sync.WaitGroup, ioWorkQueue chan Proccess, cpuWorkQueue chan 
 		log.Println("io-request with proccess", proccess)
 		log.Println("io-request takes ", proccess.Job.IoTime, " seconds.")
 		time.Sleep(time.Duration(proccess.Job.IoTime) * time.Second)
-
+		proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Complete = time.Now()
 		proccess.Job.IoTime = -1
 		// submit proccess to cpu to execute
 		var scheduleTime = ScheduleTime{

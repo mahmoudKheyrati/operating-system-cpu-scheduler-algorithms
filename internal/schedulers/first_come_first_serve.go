@@ -78,7 +78,8 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.S
 		defer waitGroup.Done()
 		for process := range completedProcesses {
 			responseTime := process.ScheduleTimes[0].Execution.Sub(process.ScheduleTimes[0].Submission)
-			turnAroundTime := process.ScheduleTimes[len(process.ScheduleTimes)-1].Execution.Sub(process.ScheduleTimes[0].Submission)
+			log.Println("proccess schedule times: ", process.ScheduleTimes)
+			turnAroundTime := process.ScheduleTimes[len(process.ScheduleTimes)-1].Complete.Sub(process.ScheduleTimes[0].Submission)
 
 			var waitingTime float64 = 0
 			for _, s := range process.ScheduleTimes {
