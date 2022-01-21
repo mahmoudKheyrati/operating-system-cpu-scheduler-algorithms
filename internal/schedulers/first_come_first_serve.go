@@ -37,9 +37,8 @@ func cpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 			// execute cpu time 1
 			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].execution = time.Now() // set execution time
 			time.Sleep(time.Duration(proccess.job.CpuTime1) * time.Second)               // simulate execution
+			utilizationTime += proccess.job.CpuTime1
 			proccess.job.CpuTime1 = -1
-			utilizationTime += proccess.job.CpuTime1
-			utilizationTime += proccess.job.CpuTime1
 			// context switch
 
 		} else if proccess.job.CpuTime1 == -1 && proccess.job.IoTime != -1 {
@@ -55,8 +54,8 @@ func cpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 
 			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].execution = time.Now() // set execution time
 			time.Sleep(time.Duration(proccess.job.CpuTime2) * time.Second)               // simulate execution
-			proccess.job.CpuTime2 = -1
 			utilizationTime += proccess.job.CpuTime2
+			proccess.job.CpuTime2 = -1
 			// context switch
 
 			// use goroutine to ensure sending to channel is non-blocking
