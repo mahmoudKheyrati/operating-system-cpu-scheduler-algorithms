@@ -1,6 +1,7 @@
 package schedulers
 
 import (
+	"log"
 	"os-project/internal/core"
 	"os-project/internal/requests"
 	"os-project/internal/responses"
@@ -19,7 +20,7 @@ const (
 type cpuCore struct {
 }
 
-func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.ScheduleResponse, error) {
+func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.ScheduleResponse, error) {
 	var ioDeviceCount = len(request.Jobs)
 
 	// run cpu cores and io devices
@@ -39,7 +40,7 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.
 	}
 
 	for i := 0; i < ioDeviceCount; i++ {
-		go core.IoExecute(&wg, cpuWorkQueue, ioWorkQueue)
+		go core.IoExecute(&wg, ioWorkQueue, cpuWorkQueue)
 	}
 
 	// schedule jobs
@@ -63,6 +64,8 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.
 			})
 			cpuWorkQueue <- proccess
 		}
+		//close(ioWorkQueue)
+		time.Sleep(10 * time.Second)
 		close(cpuWorkQueue)
 		close(ioWorkQueue)
 
@@ -96,7 +99,7 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.
 
 	utilization := 1 - (cpuMetrics[0].IdleTime.Seconds() / cpuMetrics[0].TotalTime.Seconds())
 	var jobCount = len(request.Jobs)
-	var response = &responses.ScheduleResponse{
+	var response = responses.ScheduleResponse{
 		TotalTime:             cpuMetrics[0].TotalTime.Seconds(),
 		IdleTime:              cpuMetrics[0].IdleTime.Seconds(),
 		CpuUtilization:        utilization,
@@ -107,5 +110,6 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.
 		Details:               proccessDetails,
 	}
 
+	log.Printf("response is: %+v", response)
 	return response, nil
 }
