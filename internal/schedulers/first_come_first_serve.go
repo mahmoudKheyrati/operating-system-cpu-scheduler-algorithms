@@ -96,7 +96,7 @@ func ioExecute(wg *sync.WaitGroup, ioWorkQueue chan Proccess, cpuWorkQueue chan 
 
 func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.ScheduleResponse, error) {
 	const cpuCoresCount = 1
-	const ioDeviceCount = 1
+	var ioDeviceCount = len(request.Jobs)
 	const proccessSchedulerGoroutineCount = 1
 	const completionProccessGoroutineCount = 1
 
