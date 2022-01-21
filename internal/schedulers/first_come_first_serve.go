@@ -28,6 +28,8 @@ type cpuMetric struct {
 
 func cpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan Proccess, completedProcesses chan Proccess, metric *cpuMetric) {
 	defer wg.Done()
+	defer close(completedProcesses)
+
 	var startTime = time.Now()
 	var utilizationTime = 0
 	for proccess := range cpuWorkQueue {
@@ -93,8 +95,10 @@ func ioExecute(wg *sync.WaitGroup, ioWorkQueue chan Proccess, cpuWorkQueue chan 
 }
 
 func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.ScheduleResponse, error) {
-	var cpuCoresCount = 1
-	var ioDeviceCount = 1
+	const cpuCoresCount = 1
+	const ioDeviceCount = 1
+	const proccessSchedulerGoroutineCount = 1
+	const completionProccessGoroutineCount = 1
 
 	// run cpu cores and io devices
 	var cpuWorkQueue = make(chan Proccess)
@@ -104,7 +108,7 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.
 	var cpuMetrics = make([]*cpuMetric, 0, 0)
 
 	var wg sync.WaitGroup
-	wg.Add(cpuCoresCount + ioDeviceCount + 1)
+	wg.Add(cpuCoresCount + ioDeviceCount + proccessSchedulerGoroutineCount + completionProccessGoroutineCount)
 
 	// by this technique we could have multi-core and multi-io device at once
 	for i := 0; i < cpuCoresCount; i++ {
@@ -142,7 +146,31 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.
 
 	}(&wg)
 
+	// get completed proccess metrics
+	proccessDetails := make([]responses.ProcessResponse, 0)
+
+	go func(waitGroup *sync.WaitGroup) {
+		defer waitGroup.Done()
+		for process := range completedProcesses {
+			responseTime := process.ScheduleTimes[0].execution.Sub(process.ScheduleTimes[0].submission)
+			turnAroundTime := process.ScheduleTimes[len(process.ScheduleTimes)-1].execution.Sub(process.ScheduleTimes[0].submission)
+
+			var waitingTime float64 = 0
+			for _, s := range process.ScheduleTimes {
+				waitingTime += s.execution.Sub(s.submission).Seconds()
+			}
+
+			proccessDetails = append(proccessDetails, responses.ProcessResponse{
+				ProcessId:      process.job.ProcessId,
+				ResponseTime:   responseTime.Seconds(),
+				TurnAroundTime: turnAroundTime.Seconds(),
+				WaitingTime:    waitingTime,
+			})
+		}
+	}(&wg)
+
 	wg.Wait()
+	averageWaitingTime, averageResponseTime, averageTimeAroundTime := calculateAverage(proccessDetails)
 
 	utilization := 1 - (cpuMetrics[0].IdleTime.Seconds() / cpuMetrics[0].TotalTime.Seconds())
 	var jobCount = len(request.Jobs)
@@ -151,18 +179,30 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (*responses.
 		IdleTime:              cpuMetrics[0].IdleTime.Seconds(),
 		CpuUtilization:        utilization,
 		CpuThroughput:         float64(jobCount) / cpuMetrics[0].TotalTime.Seconds(),
-		AverageWaitingTime:    0,
-		AverageResponseTime:   0,
-		AverageTurnAroundTime: 0,
-		Details: []responses.ProcessResponse{
-			{
-				ProcessId:      0,
-				ResponseTime:   0,
-				TurnAroundTime: 0,
-				WaitingTime:    0,
-			},
-		},
+		AverageWaitingTime:    averageWaitingTime,
+		AverageResponseTime:   averageResponseTime,
+		AverageTurnAroundTime: averageTimeAroundTime,
+		Details:               proccessDetails,
 	}
 
 	return response, nil
+}
+
+func calculateAverage(proccessDetails []responses.ProcessResponse) (averageWaitingTime, averageResponseTime, averageTimeAroundTime float64) {
+	var waitingTimeSum float64
+	var responseTimeSum float64
+	var turnAroundTimeSum float64
+
+	for _, proccess := range proccessDetails {
+		waitingTimeSum += proccess.WaitingTime
+		responseTimeSum += proccess.ResponseTime
+		turnAroundTimeSum += proccess.TurnAroundTime
+	}
+
+	proccessCount := float64(len(proccessDetails))
+
+	averageWaitingTime = waitingTimeSum / proccessCount
+	averageResponseTime = responseTimeSum / proccessCount
+	averageTimeAroundTime = turnAroundTimeSum / proccessCount
+	return
 }
