@@ -31,7 +31,7 @@ func (s *SchedulerHandlerImpl) FirstComeFirstServe(ctx *fiber.Ctx) error {
 
 		return nil
 	}
-	response, err := schedulers.ScheduleFirstComeFirstServe(&request)
+	response, err := schedulers.ScheduleFirstComeFirstServe(request)
 	if err != nil {
 		ctx.JSON(fiber.Map{"error": "can not proccess request"})
 		return nil
