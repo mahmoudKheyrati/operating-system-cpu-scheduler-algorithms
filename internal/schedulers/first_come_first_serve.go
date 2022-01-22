@@ -17,9 +17,6 @@ const (
 	completionProccessGoroutineCount = 1
 )
 
-type cpuCore struct {
-}
-
 func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.ScheduleResponse, error) {
 	var ioDeviceCount = len(request.Jobs)
 
@@ -55,14 +52,22 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.S
 
 		// schedule jobs
 		for _, job := range jobs {
-			proccess := core.Proccess{
-				Job:           &job,
-				ScheduleTimes: make([]core.ScheduleTime, 0, 0),
-			}
-			proccess.ScheduleTimes = append(proccess.ScheduleTimes, core.ScheduleTime{
-				Submission: time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second),
-			})
-			cpuWorkQueue <- proccess
+			go func(job requests.Job) {
+
+				proccess := core.Proccess{
+					Job:           &job,
+					ScheduleTimes: make([]core.ScheduleTime, 0, 0),
+				}
+				proccess.ScheduleTimes = append(proccess.ScheduleTimes, core.ScheduleTime{
+					Submission: time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second),
+				})
+				select {
+				case <-time.After(time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())):
+					log.Println("pid:", proccess.Job.ProcessId, "send process to cpuWorkQueue")
+					cpuWorkQueue <- proccess
+				}
+				log.Println("pid:", proccess.Job.ProcessId, "schedule proccess.")
+			}(job)
 		}
 
 	}(&wg)
@@ -74,7 +79,7 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.S
 		defer waitGroup.Done()
 		for process := range completedProcesses {
 			responseTime := process.ScheduleTimes[0].Execution.Sub(process.ScheduleTimes[0].Submission)
-			log.Println("proccess schedule times: ", process.ScheduleTimes)
+			log.Println("pid:", process.Job.ProcessId, "proccess completed. schedule times: ", process.ScheduleTimes)
 			turnAroundTime := process.ScheduleTimes[len(process.ScheduleTimes)-1].Complete.Sub(process.ScheduleTimes[0].Submission)
 
 			var waitingTime float64 = 0
@@ -92,6 +97,7 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.S
 			if len(proccessDetails) == len(request.Jobs) {
 				close(cpuWorkQueue)
 				close(ioWorkQueue)
+				break
 			}
 		}
 	}(&wg)

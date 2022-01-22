@@ -32,19 +32,19 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 	var startTime = time.Now()
 	for proccess := range cpuWorkQueue {
 		// arrival time in the future
-		nextArrivalDuration := startTime.Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())
-		log.Println("pid:", proccess.Job.ProcessId, "next arrival duration: ", nextArrivalDuration)
-		if nextArrivalDuration > 0 {
-			log.Println("pid: ", proccess.Job.ProcessId, "delay")
-			go func(p Proccess) {
-				select {
-				case <-time.After(startTime.Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())):
-					// re-schedule
-					cpuWorkQueue <- proccess
-				}
-			}(proccess)
-			continue
-		}
+		//nextArrivalDuration := startTime.Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())
+		//log.Println("pid:", proccess.Job.ProcessId, "next arrival duration: ", nextArrivalDuration)
+		//if nextArrivalDuration > 0 {
+		//	log.Println("pid: ", proccess.Job.ProcessId, "delay")
+		//	go func(p Proccess) {
+		//		select {
+		//		case <-time.After(startTime.Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())):
+		//			// re-schedule
+		//			cpuWorkQueue <- proccess
+		//		}
+		//	}(proccess)
+		//	continue
+		//}
 
 		if proccess.Job.CpuTime1 != -1 {
 			// execute cpu time 1
@@ -83,15 +83,14 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 			proccess.Job.CpuTime2 = -1
 			// context switch
 
+			log.Println("pid:", proccess.Job.ProcessId, "cpu-time2 executes successfully. ")
 			// use goroutine to ensure sending to channel is non-blocking
 			go func() {
 				// last execution: when proccess complete its execution we send it to done channel
 				log.Println("pid:", proccess.Job.ProcessId, "send proccess to completed proccess channel.")
+				proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Complete = time.Now()
 				completedProcesses <- proccess
 			}()
-			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Complete = time.Now()
-
-			log.Println("pid:", proccess.Job.ProcessId, "cpu-time2 executes successfully. ")
 
 		}
 	}
@@ -113,7 +112,7 @@ func IoExecute(wg *sync.WaitGroup, ioWorkQueue chan Proccess, cpuWorkQueue chan 
 	defer wg.Done()
 	for proccess := range ioWorkQueue {
 		log.Println("pid:", proccess.Job.ProcessId, "io-request performs")
-		log.Println("io-request takes ", proccess.Job.IoTime, " seconds.")
+		log.Println("pid:", proccess.Job.ProcessId, "io-request takes ", proccess.Job.IoTime, " seconds.")
 		time.Sleep(time.Duration(proccess.Job.IoTime) * time.Second)
 		proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Complete = time.Now()
 		proccess.Job.IoTime = -1
