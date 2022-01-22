@@ -11,12 +11,6 @@ import (
 	"time"
 )
 
-const (
-	cpuCoresCount                    = 1
-	proccessSchedulerGoroutineCount  = 1
-	completionProccessGoroutineCount = 1
-)
-
 func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.ScheduleResponse, error) {
 	var ioDeviceCount = len(request.Jobs)
 
