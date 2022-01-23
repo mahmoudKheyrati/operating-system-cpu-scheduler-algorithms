@@ -31,21 +31,6 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 	var utilizationTime = 0
 	var startTime = time.Now()
 	for proccess := range cpuWorkQueue {
-		// arrival time in the future
-		//nextArrivalDuration := startTime.Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())
-		//log.Println("pid:", proccess.Job.ProcessId, "next arrival duration: ", nextArrivalDuration)
-		//if nextArrivalDuration > 0 {
-		//	log.Println("pid: ", proccess.Job.ProcessId, "delay")
-		//	go func(p Proccess) {
-		//		select {
-		//		case <-time.After(startTime.Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())):
-		//			// re-schedule
-		//			cpuWorkQueue <- proccess
-		//		}
-		//	}(proccess)
-		//	continue
-		//}
-
 		if proccess.Job.CpuTime1 != -1 {
 			// execute cpu time 1
 			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Execution = time.Now() // set execution time
