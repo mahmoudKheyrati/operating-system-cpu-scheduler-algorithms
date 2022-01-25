@@ -19,6 +19,12 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.S
 	var ioWorkQueue = make(chan core.Proccess)
 	var completedProcesses = make(chan core.Proccess)
 
+	contextSwitch := make(chan core.Proccess)
+	go func() {
+		for process :=range contextSwitch {
+			ioWorkQueue <- process
+		}
+	}()
 	var cpuMetrics = make([]*core.CpuMetric, 0, 0)
 
 	var wg sync.WaitGroup
@@ -27,7 +33,7 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.S
 	// by this technique we could have multi-core and multi-io device at once
 	for i := 0; i < cpuCoresCount; i++ {
 		cpuMetrics = append(cpuMetrics, &core.CpuMetric{})
-		go core.CpuExecute(&wg, cpuWorkQueue, ioWorkQueue, completedProcesses, cpuMetrics[i])
+		go core.CpuExecute(&wg, cpuWorkQueue, completedProcesses,contextSwitch, cpuMetrics[i])
 	}
 
 	for i := 0; i < ioDeviceCount; i++ {

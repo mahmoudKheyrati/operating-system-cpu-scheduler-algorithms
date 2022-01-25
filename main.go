@@ -5,6 +5,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"runtime"
 
 	"log"
 	api2 "os-project/api"
@@ -12,6 +13,7 @@ import (
 )
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	schedulerConfig := config.GetSchedulerConfig()
 	schedulerHandler := api2.NewSchedulerHandlerImpl(schedulerConfig)
 
@@ -25,7 +27,7 @@ func main() {
 	{
 		v1.Post("/fcfs", schedulerHandler.FirstComeFirstServe)
 		v1.Post("/rr", schedulerHandler.RoundRobin)
-		v1.Post("sjf", schedulerHandler.ShortestJobFirst)
+		v1.Post("/sjf", schedulerHandler.ShortestJobFirst)
 		v1.Post("/mlfq", schedulerHandler.MultilevelFeedbackQueue)
 		v1.Post("/all", schedulerHandler.AllAlgorithms)
 	}

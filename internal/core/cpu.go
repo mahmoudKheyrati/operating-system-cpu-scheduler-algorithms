@@ -23,7 +23,7 @@ type CpuMetric struct {
 	IdleTime        time.Duration
 }
 
-func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan Proccess, completedProcesses chan Proccess, metric *CpuMetric) {
+func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, completedProcesses chan Proccess, contextSwitch chan Proccess, metric *CpuMetric) {
 	log.Println("start cpu")
 	defer wg.Done()
 	defer close(completedProcesses)
@@ -34,8 +34,9 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 		if proccess.Job.CpuTime1 != -1 {
 			// execute cpu time 1
 			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Execution = time.Now() // set execution time
-			log.Println("pid:", proccess.Job.ProcessId, "cpu-time1 takes ", proccess.Job.CpuTime1, " seconds.")
+			log.Println("pid:", proccess.Job.ProcessId, "start executing in cpuCore1")
 			time.Sleep(time.Duration(proccess.Job.CpuTime1) * time.Second) // simulate execution
+			log.Println("pid:", proccess.Job.ProcessId, "cpu-time1 takes ", proccess.Job.CpuTime1, " seconds.")
 			utilizationTime += proccess.Job.CpuTime1
 			proccess.Job.CpuTime1 = -1
 			log.Println("pid:", proccess.Job.ProcessId, "cpu-time1 executes successfully. ")
@@ -44,7 +45,8 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 			//go func() { // runs on another coroutine to ensure not waiting for request io
 			// context switch
 			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Complete = time.Now()
-			ioWorkQueue <- proccess
+			contextSwitch <- proccess
+
 			//}()
 
 		} else if proccess.Job.CpuTime1 == -1 && proccess.Job.IoTime != -1 {
@@ -61,9 +63,9 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, ioWorkQueue chan
 
 			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Execution = time.Now() // set execution time
 
-			log.Println("pid:", proccess.Job.ProcessId, "cpu-time2 takes ", proccess.Job.CpuTime2, " seconds.")
-
+			log.Println("pid:", proccess.Job.ProcessId, "start executing in cpuCore2")
 			time.Sleep(time.Duration(proccess.Job.CpuTime2) * time.Second) // simulate execution
+			log.Println("pid:", proccess.Job.ProcessId, "cpu-time2 takes ", proccess.Job.CpuTime2, " seconds.")
 			utilizationTime += proccess.Job.CpuTime2
 			proccess.Job.CpuTime2 = -1
 			// context switch
