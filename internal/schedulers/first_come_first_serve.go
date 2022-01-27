@@ -23,6 +23,7 @@ func ScheduleFirstComeFirstServe(request requests.ScheduleRequests) (responses.S
 	contextSwitch := make(chan core.Proccess)
 	go func() {
 		for process := range contextSwitch { // we now when process executes its burst time we should send it for io-Device.
+			log.Println("pid:", process.Job.ProcessId, "send io request.")
 			ioWorkQueue <- process
 		}
 	}()

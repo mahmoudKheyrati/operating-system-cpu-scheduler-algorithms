@@ -15,6 +15,7 @@ type ScheduleTime struct {
 type Proccess struct {
 	Job           *requests.Job
 	ScheduleTimes []ScheduleTime
+	TimeQuantum   time.Duration
 }
 
 type CpuMetric struct {
@@ -28,26 +29,33 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, completedProcess
 	defer wg.Done()
 	defer close(completedProcesses)
 
-	var utilizationTime = 0
 	var startTime = time.Now()
+	var utilizationTime = time.Duration(0)
 	for proccess := range cpuWorkQueue {
-		if proccess.Job.CpuTime1 != -1 {
-			// execute cpu time 1
+		if proccess.Job.CpuTime1 != -1 { // execute cpu time 1
+
 			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Execution = time.Now() // set execution time
+
+			var timeToSleep = time.Duration(proccess.Job.CpuTime1) * time.Second
+			var nextCpuTime1 = -1
+			if proccess.TimeQuantum != 0 {
+				timeToSleep = proccess.TimeQuantum
+				nextCpuTime1 = int((time.Duration(proccess.Job.CpuTime1) * time.Second) - proccess.TimeQuantum)
+				if nextCpuTime1 < 0 {
+					nextCpuTime1 = -1
+				}
+			}
+
 			log.Println("pid:", proccess.Job.ProcessId, "start executing in cpuCore1")
-			time.Sleep(time.Duration(proccess.Job.CpuTime1) * time.Second) // simulate execution
-			log.Println("pid:", proccess.Job.ProcessId, "cpu-time1 takes ", proccess.Job.CpuTime1, " seconds.")
-			utilizationTime += proccess.Job.CpuTime1
-			proccess.Job.CpuTime1 = -1
+			time.Sleep(timeToSleep) // simulate execution
+			log.Println("pid:", proccess.Job.ProcessId, "cpu-time1 takes ", timeToSleep)
+			utilizationTime += timeToSleep
+			proccess.Job.CpuTime1 = nextCpuTime1
+			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Complete = time.Now()
 			log.Println("pid:", proccess.Job.ProcessId, "cpu-time1 executes successfully. ")
 
-			log.Println("pid:", proccess.Job.ProcessId, "send io request.")
-			//go func() { // runs on another coroutine to ensure not waiting for request io
 			// context switch
-			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Complete = time.Now()
 			contextSwitch <- proccess
-
-			//}()
 
 		} else if proccess.Job.CpuTime1 == -1 && proccess.Job.IoTime != -1 {
 			// todo: if time-quantum not finished we can send io-request
@@ -63,31 +71,42 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, completedProcess
 
 			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Execution = time.Now() // set execution time
 
+			var timeToSleep = time.Duration(proccess.Job.CpuTime2) * time.Second
+			var nextCpuTime2 = -1
+			if proccess.TimeQuantum != 0 {
+				timeToSleep = proccess.TimeQuantum
+				nextCpuTime2 = int((time.Duration(proccess.Job.CpuTime2) * time.Second) - proccess.TimeQuantum)
+				if nextCpuTime2 < 0 {
+					nextCpuTime2 = -1
+				}
+			}
+
 			log.Println("pid:", proccess.Job.ProcessId, "start executing in cpuCore2")
-			time.Sleep(time.Duration(proccess.Job.CpuTime2) * time.Second) // simulate execution
-			log.Println("pid:", proccess.Job.ProcessId, "cpu-time2 takes ", proccess.Job.CpuTime2, " seconds.")
-			utilizationTime += proccess.Job.CpuTime2
-			proccess.Job.CpuTime2 = -1
+			time.Sleep(timeToSleep) // simulate execution
+			log.Println("pid:", proccess.Job.ProcessId, "cpu-time2 takes ", timeToSleep)
+			utilizationTime += timeToSleep
+			proccess.Job.CpuTime2 = nextCpuTime2
 			// context switch
 
+			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Complete = time.Now()
 			log.Println("pid:", proccess.Job.ProcessId, "cpu-time2 executes successfully. ")
-			// use goroutine to ensure sending to channel is non-blocking
-			go func() {
-				// last execution: when proccess complete its execution we send it to done channel
+
+			if nextCpuTime2 == -1 { // last execution: when proccess complete its execution we send it to done channel
 				log.Println("pid:", proccess.Job.ProcessId, "send proccess to completed proccess channel.")
-				proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Complete = time.Now()
 				completedProcesses <- proccess
-			}()
+			} else { // process doesn't complete yet, so we should perform context switch
+				contextSwitch <- proccess
+			}
 
 		}
 	}
 	var totalTime = time.Now().Sub(startTime)
-	var cpuIdleTime = totalTime - time.Duration(utilizationTime)*time.Second
+	var cpuIdleTime = totalTime - utilizationTime
 
 	// assign metrics
 	*metric = CpuMetric{
 		TotalTime:       totalTime,
-		UtilizationTime: time.Duration(utilizationTime) * time.Second,
+		UtilizationTime: utilizationTime,
 		IdleTime:        cpuIdleTime,
 	}
 	log.Printf("cpu metric: %+v", metric)
