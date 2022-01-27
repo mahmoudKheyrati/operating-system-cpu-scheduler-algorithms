@@ -102,7 +102,7 @@ func ScheduleShortestJobFirst(request *requests.ScheduleRequests) (responses.Sch
 
 				select {
 				case <-time.After(time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())):
-					addNewScheduleTimeToProccess(&proccess, time.Now().Add(time.Duration(proccess.Job.ArrivalTime)*time.Second))
+					addNewScheduleTimeToProccess(&proccess, time.Now())
 					log.Println("pid:", proccess.Job.ProcessId, "send process to readyQueue")
 					addProccessToReadyQueue(proccess)
 				}
