@@ -13,7 +13,6 @@ import (
 
 func ScheduleShortestJobFirst(request *requests.ScheduleRequests) (responses.ScheduleResponse, error) {
 	log.Println("running sjf algorithm ...")
-	// we have 3 level. 5, 8, fcfs
 	var ioDeviceCount = len(request.Jobs)
 
 	// run cpu cores and io devices
@@ -26,7 +25,7 @@ func ScheduleShortestJobFirst(request *requests.ScheduleRequests) (responses.Sch
 	var readyQueueMutex sync.Mutex
 
 	scheduleNewProccess := func() {
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(40 * time.Millisecond)
 		readyQueueMutex.Lock()
 		defer readyQueueMutex.Unlock()
 		// sort ready queue
@@ -110,18 +109,13 @@ func ScheduleShortestJobFirst(request *requests.ScheduleRequests) (responses.Sch
 		}
 	}(&wg)
 
-	go func() { // schedule multilevel feedback queue.
-		//for {
-		//	cpuWorkQueue <- proccess
-		//}
-	}()
-
 	// get completed proccess metrics
 	proccessDetails := make([]responses.ProcessResponse, 0)
 
 	go func(waitGroup *sync.WaitGroup) {
 		defer waitGroup.Done()
 		for process := range completedProcesses {
+			go scheduleNewProccess()
 			details := generateProcessDetails(process)
 			proccessDetails = append(proccessDetails, details)
 
