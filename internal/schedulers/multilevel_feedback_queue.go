@@ -44,7 +44,7 @@ func ScheduleMultilevelFeedbackQueue(request *requests.ScheduleRequests, timeQua
 				log.Println("pid:", process.Job.ProcessId, "context switch detected. send proccess to roundRobin channel")
 
 				process.TimeQuantum = getNextTimeQuantum(process.TimeQuantum, timeQuantumList)
-				addNewScheduleTimeToProccess(&process)
+				addNewScheduleTimeToProccess(&process, time.Now())
 				sendProccessToNextChannel(process)
 			}
 		}
@@ -92,7 +92,7 @@ func ScheduleMultilevelFeedbackQueue(request *requests.ScheduleRequests, timeQua
 				select {
 				case <-time.After(time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())):
 					log.Println("pid:", proccess.Job.ProcessId, "send process to roundRobin1 channel")
-					addNewScheduleTimeToProccess(&proccess)
+					addNewScheduleTimeToProccess(&proccess, time.Now().Add(time.Duration(proccess.Job.ArrivalTime)*time.Second))
 					sendProccessToNextChannel(proccess)
 				}
 			}(job)
@@ -162,8 +162,8 @@ func getNextTimeQuantum(currentTimeQuantum time.Duration, timeQuantumList []int)
 	return time.Duration(timeQuantumList[len(timeQuantumList)-1]) * time.Second // for last timeQuantum returns lastTimeQuantum
 }
 
-func addNewScheduleTimeToProccess(proccess *core.Proccess) {
+func addNewScheduleTimeToProccess(proccess *core.Proccess, time time.Time) {
 	proccess.ScheduleTimes = append(proccess.ScheduleTimes, core.ScheduleTime{
-		Submission: time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second),
+		Submission: time,
 	})
 }

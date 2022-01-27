@@ -11,11 +11,6 @@ import (
 	"time"
 )
 
-type localProccess struct {
-	*core.Proccess
-	isContextSwitch bool
-}
-
 func ScheduleShortestJobFirst(request *requests.ScheduleRequests) (responses.ScheduleResponse, error) {
 	log.Println("running sjf algorithm ...")
 	// we have 3 level. 5, 8, fcfs
@@ -107,7 +102,7 @@ func ScheduleShortestJobFirst(request *requests.ScheduleRequests) (responses.Sch
 
 				select {
 				case <-time.After(time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())):
-					addNewScheduleTimeToProccess(&proccess)
+					addNewScheduleTimeToProccess(&proccess, time.Now().Add(time.Duration(proccess.Job.ArrivalTime)*time.Second))
 					log.Println("pid:", proccess.Job.ProcessId, "send process to readyQueue")
 					addProccessToReadyQueue(proccess)
 				}
