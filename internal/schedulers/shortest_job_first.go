@@ -60,15 +60,11 @@ func ScheduleShortestJobFirst(request *requests.ScheduleRequests) (responses.Sch
 	contextSwitch := make(chan core.Proccess)
 	go func() {
 		for process := range contextSwitch {
-			log.Println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reading from context switch")
-
 			if process.Job.CpuTime1 == -1 && process.Job.IoTime != -1 { // we have io request
 				go scheduleNewProccess()
 				log.Println("pid:", process.Job.ProcessId, "send io request")
 				ioWorkQueue <- process
 			}
-
-			log.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ end of reading context switch")
 		}
 	}()
 
@@ -174,13 +170,4 @@ func sortShortestJob(processes []core.Proccess) []core.Proccess {
 	}
 	fmt.Println()
 	return processes
-}
-
-func printProcesses(processes []*core.Proccess) {
-	var ids = make([]int, 0)
-	for i := 0; i < len(processes); i++ {
-		ids = append(ids, processes[i].Job.ProcessId)
-
-	}
-	fmt.Println(" $$$$$$$$$$$$$$$$$$ ids:", ids, "$$$$$$$$$$$$$$$$$$$4")
 }

@@ -37,8 +37,6 @@ func ScheduleMultilevelFeedbackQueue(request *requests.ScheduleRequests, timeQua
 	contextSwitch := make(chan core.Proccess)
 	go func() {
 		for process := range contextSwitch {
-			log.Println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reading from context switch")
-
 			if process.Job.CpuTime1 == -1 && process.Job.IoTime != -1 { // we have io request
 				log.Println("pid:", process.Job.ProcessId, "send io request")
 				ioWorkQueue <- process
@@ -49,7 +47,6 @@ func ScheduleMultilevelFeedbackQueue(request *requests.ScheduleRequests, timeQua
 				addNewScheduleTimeToProccess(&process)
 				sendProccessToNextChannel(process)
 			}
-			log.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ end of reading context switch")
 		}
 	}()
 
