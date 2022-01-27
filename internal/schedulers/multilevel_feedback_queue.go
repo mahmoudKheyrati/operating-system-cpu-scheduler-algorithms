@@ -25,6 +25,9 @@ func ScheduleMultilevelFeedbackQueue(request *requests.ScheduleRequests, timeQua
 	fcfsChannel := make(chan core.Proccess, len(request.Jobs))
 
 	sendProccessToNextChannel := func(proccess core.Proccess) {
+		proccess.ScheduleTimes = append(proccess.ScheduleTimes, core.ScheduleTime{
+			Submission: time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second),
+		})
 		if int(proccess.TimeQuantum.Seconds()) == timeQuantumList[0] {
 			roundRobinChannel1 <- proccess // send proccess to next channel
 		} else if int(proccess.TimeQuantum.Seconds()) == timeQuantumList[1] {
@@ -90,9 +93,7 @@ func ScheduleMultilevelFeedbackQueue(request *requests.ScheduleRequests, timeQua
 					ScheduleTimes: make([]core.ScheduleTime, 0, 0),
 					TimeQuantum:   time.Duration(timeQuantumList[0]) * time.Second, // we put proccess in the first roundRobin queue
 				}
-				proccess.ScheduleTimes = append(proccess.ScheduleTimes, core.ScheduleTime{
-					Submission: time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second),
-				})
+
 				select {
 				case <-time.After(time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())):
 					log.Println("pid:", proccess.Job.ProcessId, "send process to roundRobin1 channel")
