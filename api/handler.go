@@ -49,7 +49,7 @@ func (s *SchedulerHandlerImpl) RoundRobin(ctx *fiber.Ctx) error {
 		})
 		return nil
 	}
-	response, err := schedulers.ScheduleRoundRobin(&request)
+	response, err := schedulers.ScheduleRoundRobin(&request, s.config.RoundRobinTimeQuantum)
 	if err != nil {
 		ctx.JSON(fiber.Map{"error": "can not proccess request"})
 		return nil
