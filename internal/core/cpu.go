@@ -46,8 +46,6 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, completedProcess
 					if nextCpuTime1 <= 0 {
 						nextCpuTime1 = -1
 					}
-					//log.Println("cputTime1Duration: ", cpuTime1Duration, "proccess.TimeQuantum: ", proccess.TimeQuantum, "= ", cpuTime1Duration-proccess.TimeQuantum)
-					//log.Println("pid:", proccess.Job.ProcessId, "nextCputTime1", nextCpuTime1)
 				}
 
 			}
@@ -66,16 +64,6 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, completedProcess
 			contextSwitch <- proccess
 			log.Println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% after cpu context switch")
 
-			//} else if proccess.Job.CpuTime1 == -1 && proccess.Job.IoTime != -1 {
-			//	// todo: if time-quantum not finished we can send io-request
-			//
-			//	// run io in the io queue
-			//	//go func() { // runs on another coroutine to ensure not waiting for request io
-			//	//	log.Println("pid:", proccess.Job.ProcessId,"send io request.")
-			//	//	ioWorkQueue <- proccess
-			//	//}()
-			//	// context switch
-			//}
 		} else if proccess.Job.CpuTime2 != -1 {
 			// execute cpu time 2
 
