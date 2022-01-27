@@ -92,7 +92,7 @@ func ScheduleMultilevelFeedbackQueue(request *requests.ScheduleRequests, timeQua
 				select {
 				case <-time.After(time.Now().Add(time.Duration(proccess.Job.ArrivalTime) * time.Second).Sub(time.Now())):
 					log.Println("pid:", proccess.Job.ProcessId, "send process to roundRobin1 channel")
-					addNewScheduleTimeToProccess(&proccess, time.Now().Add(time.Duration(proccess.Job.ArrivalTime)*time.Second))
+					addNewScheduleTimeToProccess(&proccess, time.Now())
 					sendProccessToNextChannel(proccess)
 				}
 			}(job)
