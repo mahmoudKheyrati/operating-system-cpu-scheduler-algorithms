@@ -4,5 +4,6 @@ scheduler:
     time_quantum: 5
   multilevel_feedback_queue:
     levels_time_quantum:
-      - 8
-      - 16
+      - 2
+      - 4
+      - -1

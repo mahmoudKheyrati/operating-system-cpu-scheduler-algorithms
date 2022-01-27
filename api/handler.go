@@ -79,13 +79,13 @@ func (s *SchedulerHandlerImpl) ShortestJobFirst(ctx *fiber.Ctx) error {
 
 func (s *SchedulerHandlerImpl) MultilevelFeedbackQueue(ctx *fiber.Ctx) error {
 	var request requests.ScheduleRequests
-	if err := ctx.BodyParser(request); err != nil {
+	if err := ctx.BodyParser(&request); err != nil {
 		ctx.JSON(fiber.Map{
 			"error": "invalid request format",
 		})
 		return nil
 	}
-	response, err := schedulers.ScheduleMultilevelFeedbackQueue(&request)
+	response, err := schedulers.ScheduleMultilevelFeedbackQueue(&request, s.config.MultilevelFeedbackQueueLevelsTimeQuantum)
 	if err != nil {
 		ctx.JSON(fiber.Map{"error": "can not proccess request"})
 		return nil

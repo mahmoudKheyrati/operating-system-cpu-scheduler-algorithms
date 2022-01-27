@@ -33,13 +33,12 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, completedProcess
 	var utilizationTime = time.Duration(0)
 	for proccess := range cpuWorkQueue {
 		if proccess.Job.CpuTime1 != -1 { // execute cpu time 1
-
 			proccess.ScheduleTimes[len(proccess.ScheduleTimes)-1].Execution = time.Now() // set execution time
 
 			var cpuTime1Duration = time.Duration(proccess.Job.CpuTime1) * time.Second
 			var timeToSleep = cpuTime1Duration
 			var nextCpuTime1 = -1
-			if proccess.TimeQuantum != 0 {
+			if proccess.TimeQuantum > 0 {
 
 				if cpuTime1Duration >= proccess.TimeQuantum { // proccess bigger to execute in one cpu timeQuantum
 					timeToSleep = proccess.TimeQuantum
@@ -47,13 +46,13 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, completedProcess
 					if nextCpuTime1 <= 0 {
 						nextCpuTime1 = -1
 					}
-					log.Println("cputTime1Duration: ", cpuTime1Duration, "proccess.TimeQuantum: ", proccess.TimeQuantum, "= ", cpuTime1Duration-proccess.TimeQuantum)
-					log.Println("pid:", proccess.Job.ProcessId, "nextCputTime1", nextCpuTime1)
+					//log.Println("cputTime1Duration: ", cpuTime1Duration, "proccess.TimeQuantum: ", proccess.TimeQuantum, "= ", cpuTime1Duration-proccess.TimeQuantum)
+					//log.Println("pid:", proccess.Job.ProcessId, "nextCputTime1", nextCpuTime1)
 				}
 
 			}
 
-			log.Println("pid:", proccess.Job.ProcessId, "start executing in cpuCore1")
+			log.Println("pid:", proccess.Job.ProcessId, "###################################### start executing in cpuCore1")
 			time.Sleep(timeToSleep) // simulate execution
 			log.Println("pid:", proccess.Job.ProcessId, "cpu-time1 takes ", timeToSleep)
 			utilizationTime += timeToSleep
@@ -65,6 +64,7 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, completedProcess
 			log.Printf("proccess to context switch: %+v", proccess.Job)
 
 			contextSwitch <- proccess
+			log.Println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% after cpu context switch")
 
 			//} else if proccess.Job.CpuTime1 == -1 && proccess.Job.IoTime != -1 {
 			//	// todo: if time-quantum not finished we can send io-request
@@ -84,7 +84,7 @@ func CpuExecute(wg *sync.WaitGroup, cpuWorkQueue chan Proccess, completedProcess
 			var cpuTime2Duration = time.Duration(proccess.Job.CpuTime2) * time.Second
 			var timeToSleep = cpuTime2Duration
 			var nextCpuTime2 = -1
-			if proccess.TimeQuantum != 0 {
+			if proccess.TimeQuantum > 0 {
 				if cpuTime2Duration >= proccess.TimeQuantum { // proccess bigger to execute in one cpu timeQuantum
 					timeToSleep = proccess.TimeQuantum
 					nextCpuTime2 = int((cpuTime2Duration - proccess.TimeQuantum).Seconds())
